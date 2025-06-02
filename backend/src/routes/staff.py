@@ -3,15 +3,17 @@ import requests
 import json
 from flask import Blueprint, jsonify, request
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()
 
 staff_bp = Blueprint('staff', __name__)
 
 # Supabase connection details
 def get_supabase_url():
-    return os.environ.get('SUPABASE_URL', 'https://marmqmdyndgbwrnwugeq.supabase.co')
+    return os.environ.get('SUPABASE_URL', 'https://my-custom.supabase.co')
 
 def get_supabase_key():
-    return os.environ.get('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hcm1xbWR5bmRnYndybnd1Z2VxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODg3MDI4MywiZXhwIjoyMDY0NDQ2MjgzfQ.RLjZ4GxQIH4-NRn6beVScIza4s8K-vYhW4wR-pOQfI8')
+    return os.environ.get('SUPABASE_SERVICE_KEY', 'SUPABASE_SERVICE_KEY')
 
 def supabase_request(method, path, data=None, params=None):
     """Helper function to make requests to Supabase REST API"""

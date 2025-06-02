@@ -4,6 +4,8 @@ from flask_cors import CORS
 import json
 from datetime import datetime, timedelta
 import math
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app, origins=["*"])  # Allow all origins for development, restrict in production
@@ -38,10 +40,10 @@ def health_check():
 
 # Supabase connection helper
 def get_supabase_url():
-    return os.environ.get('SUPABASE_URL', 'https://marmqmdyndgbwrnwugeq.supabase.co')
+    return os.environ.get('SUPABASE_URL', 'https://my-custom.supabase.co')
 
 def get_supabase_key():
-    return os.environ.get('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hcm1xbWR5bmRnYndybnd1Z2VxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODg3MDI4MywiZXhwIjoyMDY0NDQ2MjgzfQ.RLjZ4GxQIH4-NRn6beVScIza4s8K-vYhW4wR-pOQfI8')
+    return os.environ.get('SUPABASE_SERVICE_KEY', 'SUPABASE_SERVICE_KEY')
 
 if __name__ == '__main__':
     # Get port from environment variable or default to 5000
