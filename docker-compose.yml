@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "5000:5000"
+    command: python main.py  # change to your backend entry point
+    depends_on:
+      - frontend
+
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: npm run dev
