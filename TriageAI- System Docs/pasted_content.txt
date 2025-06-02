@@ -1,0 +1,54 @@
+Ok so i have this AI system called TriageAI, I built essentially a classification model to label patients as high risk, low risk,  Medium risk, for the emergency room, the problem we're trying to address here is when ERs have low resource and staff availability and high number of patients, and they need a system to help organize who needs treatment first. here are my features and target label:
+ 0   Systolic_BP        3000 non-null   int64  
+ 1   Diastolic_BP       3000 non-null   int64  
+ 2   Pulse_Rate         3000 non-null   int64  
+ 3   Respiratory_Rate   3000 non-null   int64  
+ 4   SPO2               2850 non-null   float64
+ 5   Temperature        3000 non-null   float64
+ 6   AVPU               3000 non-null   object 
+ 7   Age                3000 non-null   int64  
+ 8   Chief_Complaint    3000 non-null   object 
+ 9   Ambulance_Arrival  3000 non-null   int64  
+ 10  Symptom_Duration   3000 non-null   object 
+ 11  Lactate            2850 non-null   float64
+ 12  Diabetes           3000 non-null   int64  
+ 13  Hypertension       3000 non-null   int64  
+ 14  COPD               3000 non-null   int64  
+ 15  Shock_Index        3000 non-null   float64
+ 16  NEWS2              3000 non-null   int64  
+ 17  Risk_Level         3000 non-null   int64   0   Systolic_BP        3000 non-null   int64  
+ 1   Diastolic_BP       3000 non-null   int64  
+ 2   Pulse_Rate         3000 non-null   int64  
+ 3   Respiratory_Rate   3000 non-null   int64  
+ 4   SPO2               2850 non-null   float64
+ 5   Temperature        3000 non-null   float64
+ 6   AVPU               3000 non-null   object 
+ 7   Age                3000 non-null   int64  
+ 8   Chief_Complaint    3000 non-null   object 
+ 9   Ambulance_Arrival  3000 non-null   int64  
+ 10  Symptom_Duration   3000 non-null   object 
+ 11  Lactate            2850 non-null   float64
+ 12  Diabetes           3000 non-null   int64  
+ 13  Hypertension       3000 non-null   int64  
+ 14  COPD               3000 non-null   int64  
+ 15  Shock_Index        3000 non-null   float64
+ 16  NEWS2              3000 non-null   int64  
+ 17  Risk_Level         3000 non-null   int64  
+
+
+Now after this is built, I want to  integrate this into a basic website hook up with a patient look:
+Which will show the order of the patients to be serviced. as you see in usual hospitals.
+
+Then the Admin look, this will require authorization:
+Authorized users, can change which doctors ara available along with their occupation, what resources are available, and also as adding and  mark patients as being treated, treated or needing treatment, which then updates the user view.
+
+Use supabase for the database and authorization. Use Node.js and React for Website
+
+For the System , we will provide the risk level using an ai classification model, what we need is you to also build the rule based/fuzzy logic system that will help allocate the wiaitng order of the patients, for this we will use these parameters:
+Risk level from the classification model
+Waiting time currently (how long theyve already waited)
+reosucres available(xray rooms, mri rooms etc all the stuff needed for the patients)
+staff availability( doctors available, nurses available etc)
+
+
+so you need any more clarification in any part?
