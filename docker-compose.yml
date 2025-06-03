@@ -1,21 +1,26 @@
-version: "3.8"
+version: '3.9'
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+    container_name: triage-backend
+    working_dir: /app
     volumes:
       - ./backend:/app
     ports:
       - "5000:5000"
-    command: python main.py  # change to your backend entry point
-    depends_on:
-      - frontend
+    command: python -m src.main
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+    container_name: triage-frontend
+    working_dir: /app
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
       - "5173:5173"
-    command: npm run dev
+    command: ["npm", "run", "dev"]
+

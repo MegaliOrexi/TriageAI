@@ -1,14 +1,13 @@
-FROM node:22.14.0
+FROM node:20-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
+
 RUN npm install
 
-# Copy project files
 COPY . .
 
-# Default command (Vite dev server)
+EXPOSE 5173
+
 CMD ["npm", "run", "dev"]
