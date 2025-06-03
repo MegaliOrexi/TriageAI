@@ -1,12 +1,19 @@
 import os
 import requests
 import json
+import joblib
+import pandas as pd
 from flask import Blueprint, jsonify, request
 from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
 patients_bp = Blueprint('patients', __name__)
+
+# Load the triage model
+MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                         'er_triage_model_20250602_151451.joblib')
+triage_model = joblib.load(MODEL_PATH)
 
 # Supabase connection details
 def get_supabase_url():
@@ -74,28 +81,104 @@ def get_patient(patient_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@patients_bp.route('/', methods=['POST'])
-def create_patient():
-    """Create a new patient"""
+@patients_bp.route('/predict', methods=['POST'])
+def predict_triage():
+    """Predict patient triage level"""
     try:
         data = request.json
         
+        # Required fields for the model
+        required_fields = [
+            'Systolic_BP', 'Diastolic_BP', 'Pulse_Rate', 'Respiratory_Rate',
+            'SPO2', 'Temperature', 'Age', 'Lactate', 'Shock_Index', 'NEWS2',
+            'Ambulance_Arrival', 'Diabetes', 'Hypertension', 'COPD',
+            'AVPU', 'Chief_Complaint', 'Symptom_Duration'
+        ]
+        
         # Validate required fields
-        required_fields = ['first_name', 'last_name', 'date_of_birth', 'chief_complaint', 'risk_level']
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
-        # Set default values
-        now = datetime.now().isoformat()
-        data.setdefault('status', 'waiting')
-        data.setdefault('arrival_time', now)
+        # Convert data to DataFrame for prediction
+        df = pd.DataFrame([data])
+        
+        # Make prediction
+        prediction = triage_model.predict(df)
+        risk_level = int(prediction[0])  # Convert numpy int to Python int
+        
+        return jsonify({
+            "prediction": risk_level,
+            "risk_level": ["Low", "Medium", "High"][risk_level]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@patients_bp.route('/', methods=['POST'])
+def create_patient():
+    """Create a new patient with triage prediction"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['first_name', 'last_name', 'date_of_birth']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Get triage data from request
+        triage_data = {
+            'Systolic_BP': data.get('Systolic_BP'),
+            'Diastolic_BP': data.get('Diastolic_BP'),
+            'Pulse_Rate': data.get('Pulse_Rate'),
+            'Respiratory_Rate': data.get('Respiratory_Rate'),
+            'SPO2': data.get('SPO2'),
+            'Temperature': data.get('Temperature'),
+            'Age': data.get('Age'),
+            'Lactate': data.get('Lactate'),
+            'Shock_Index': data.get('Shock_Index'),
+            'NEWS2': data.get('NEWS2'),
+            'Ambulance_Arrival': data.get('Ambulance_Arrival'),
+            'Diabetes': data.get('Diabetes'),
+            'Hypertension': data.get('Hypertension'),
+            'COPD': data.get('COPD'),
+            'AVPU': data.get('AVPU'),
+            'Chief_Complaint': data.get('Chief_Complaint'),
+            'Symptom_Duration': data.get('Symptom_Duration')
+        }
+        
+        # Validate triage data
+        for field, value in triage_data.items():
+            if value is None:
+                return jsonify({"error": f"Missing triage field: {field}"}), 400
+        
+        # Make prediction using the model
+        df = pd.DataFrame([triage_data])
+        prediction = triage_model.predict(df)
+        risk_level = int(prediction[0])
+        
+        # Prepare patient data for database
+        patient_data = {
+            'first_name': data['first_name'],
+            'last_name': data['last_name'],
+            'date_of_birth': data['date_of_birth'],
+            'gender': data.get('gender'),
+            'status': 'waiting',
+            'arrival_time': datetime.now().isoformat(),
+            'risk_level': risk_level,
+            'chief_complaint': triage_data['Chief_Complaint'],
+            'triage_data': triage_data  # Store all triage data as JSONB
+        }
         
         # Make request to Supabase
-        result = supabase_request('POST', '/rest/v1/patients', data=data)
+        result = supabase_request('POST', '/rest/v1/patients', data=patient_data)
         
-        return jsonify(result[0]), 201
+        return jsonify({
+            **result[0],
+            "risk_level_text": ["Low", "Medium", "High"][risk_level]
+        }), 201
     except Exception as e:
+        print("Error creating patient:", str(e))  # Add debug logging
         return jsonify({"error": str(e)}), 500
 
 @patients_bp.route('/<patient_id>', methods=['PUT'])
