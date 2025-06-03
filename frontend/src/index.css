@@ -621,19 +621,27 @@ button {
 
 .patients-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .patients-table th {
   text-align: left;
-  padding: var(--spacing-3);
+  padding: var(--spacing-4);
   border-bottom: 2px solid var(--gray-300);
   color: var(--gray-700);
+  font-weight: 600;
+  background-color: var(--gray-50);
 }
 
 .patients-table td {
-  padding: var(--spacing-3);
+  padding: var(--spacing-4);
   border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+
+.patients-table tr:hover {
+  background-color: var(--gray-50);
 }
 
 .patients-table tr:last-child td {
@@ -641,11 +649,13 @@ button {
 }
 
 .status-badge {
-  padding: var(--spacing-1) var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
   border-radius: var(--radius);
   font-size: 0.875rem;
   font-weight: 500;
   display: inline-block;
+  text-align: center;
+  min-width: 100px;
 }
 
 .status-badge.waiting {
@@ -671,11 +681,26 @@ button {
 .time-small {
   font-size: 0.75rem;
   color: var(--gray-500);
+  margin-top: var(--spacing-1);
+  display: block;
 }
 
 .action-buttons {
   display: flex;
   gap: var(--spacing-2);
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  padding: var(--spacing-1) 0;
+}
+
+.action-buttons button {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 120px;
 }
 
 .start-treatment-btn {
@@ -805,10 +830,8 @@ button {
 }
 
 .description-cell {
-  max-width: 200px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 250px;
+  line-height: 1.4;
 }
 
 .set-in-use-btn {
@@ -1002,4 +1025,116 @@ button {
   height: 100vh;
   font-size: 1.5rem;
   color: var(--gray-600);
+}
+
+/* Common table styles for all management components */
+.patients-table,
+.staff-table,
+.resource-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.patients-table th,
+.staff-table th,
+.resource-table th {
+  text-align: left;
+  padding: var(--spacing-4);
+  border-bottom: 2px solid var(--gray-300);
+  color: var(--gray-700);
+  font-weight: 600;
+  background-color: var(--gray-50);
+}
+
+.patients-table td,
+.staff-table td,
+.resource-table td {
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+
+.patients-table tr:hover,
+.staff-table tr:hover,
+.resource-table tr:hover {
+  background-color: var(--gray-50);
+}
+
+.patients-table tr:last-child td,
+.staff-table tr:last-child td,
+.resource-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Status badge styles */
+.status-badge {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: inline-block;
+  text-align: center;
+  min-width: 100px;
+}
+
+/* Action buttons container */
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  padding: var(--spacing-1) 0;
+}
+
+.action-buttons button {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+/* Secondary information styling */
+.time-small {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: var(--spacing-1);
+  display: block;
+}
+
+/* Description cell styling */
+.description-cell {
+  max-width: 250px;
+  line-height: 1.4;
+}
+
+/* Table container styles */
+.patients-list,
+.staff-list,
+.resource-list {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: var(--spacing-6);
+  margin-top: var(--spacing-4);
+  overflow-x: auto;
+}
+
+.patients-list h3,
+.staff-list h3,
+.resource-list h3 {
+  margin-bottom: var(--spacing-6);
+  color: var(--gray-700);
+  font-size: 1.25rem;
+}
+
+/* Loading and empty states */
+.loading-spinner,
+.empty-list {
+  padding: var(--spacing-8);
+  text-align: center;
+  color: var(--gray-500);
 }

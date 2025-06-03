@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Staff } from '../lib/supabase';
+import { Link, useNavigate } from 'react-router-dom';
 
 const StaffManagement: FC = () => {
+  const navigate = useNavigate();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -122,191 +124,246 @@ const StaffManagement: FC = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
   return (
-    <div className="staff-management">
-      <header className="section-header">
-        <h2>Staff Management</h2>
-        <button 
-          className="add-staff-btn"
-          onClick={() => setIsAddingStaff(!isAddingStaff)}
-        >
-          {isAddingStaff ? 'Cancel' : 'Add New Staff'}
-        </button>
+    <div className="admin-dashboard">
+      <header className="dashboard-header">
+        <h1>TriageAI Admin Dashboard</h1>
+        <div className="header-actions">
+          <button className="view-patient-queue" onClick={() => window.open('/', '_blank')}>
+            View Patient Queue
+          </button>
+          <button className="sign-out" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        </div>
       </header>
       
-      {error && <div className="error-message">{error}</div>}
-      {successMessage && <div className="success-message">{successMessage}</div>}
-      
-      {isAddingStaff && (
-        <div className="add-staff-form">
-          <h3>Add New Staff Member</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="first_name">First Name*</label>
-                <input
-                  type="text"
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="last_name">Last Name*</label>
-                <input
-                  type="text"
-                  id="last_name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="role">Role*</label>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select Role</option>
-                  <option value="doctor">Doctor</option>
-                  <option value="nurse">Nurse</option>
-                  <option value="technician">Technician</option>
-                  <option value="receptionist">Receptionist</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="specialty">Specialty*</label>
-                <select
-                  id="specialty"
-                  name="specialty"
-                  value={formData.specialty}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select Specialty</option>
-                  <option value="emergency">Emergency Medicine</option>
-                  <option value="cardiology">Cardiology</option>
-                  <option value="neurology">Neurology</option>
-                  <option value="orthopedics">Orthopedics</option>
-                  <option value="pediatrics">Pediatrics</option>
-                  <option value="general">General</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="phone">Phone</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-            
-            <div className="form-actions">
-              <button type="button" onClick={() => setIsAddingStaff(false)} className="cancel-btn">
-                Cancel
-              </button>
-              <button type="submit" className="submit-btn">
-                Add Staff Member
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-      
-      <div className="staff-list">
-        <h3>Current Staff</h3>
+      <div className="dashboard-content">
+        <nav className="dashboard-nav">
+          <ul>
+            <li>
+              <Link to="/admin">Dashboard</Link>
+            </li>
+            <li>
+              <Link to="/admin/patients">Patients</Link>
+            </li>
+            <li className="active">
+              <Link to="/admin/staff">Staff</Link>
+            </li>
+            <li>
+              <Link to="/admin/resources">Resources</Link>
+            </li>
+            <li>
+              <Link to="/admin/settings">Settings</Link>
+            </li>
+          </ul>
+        </nav>
         
-        {loading ? (
-          <div className="loading-spinner">Loading staff...</div>
-        ) : staff.length === 0 ? (
-          <div className="empty-list">No staff members in the system</div>
-        ) : (
-          <table className="staff-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Specialty</th>
-                <th>Status</th>
-                <th>Contact</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map(member => (
-                <tr key={member.id} className={`status-${member.status}`}>
-                  <td>{member.first_name} {member.last_name}</td>
-                  <td className="capitalize">{member.role}</td>
-                  <td className="capitalize">{member.specialty}</td>
-                  <td>
-                    <span className={`status-badge ${member.status}`}>
-                      {member.status === 'available' ? 'Available' :
-                       member.status === 'busy' ? 'Busy' : 'Off Duty'}
-                    </span>
-                  </td>
-                  <td>
-                    {member.email && <div>{member.email}</div>}
-                    {member.phone && <div>{member.phone}</div>}
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      {member.status !== 'available' && (
-                        <button 
-                          onClick={() => updateStaffStatus(member.id, 'available')}
-                          className="set-available-btn"
-                        >
-                          Set Available
-                        </button>
-                      )}
-                      {member.status !== 'busy' && (
-                        <button 
-                          onClick={() => updateStaffStatus(member.id, 'busy')}
-                          className="set-busy-btn"
-                        >
-                          Set Busy
-                        </button>
-                      )}
-                      {member.status !== 'off_duty' && (
-                        <button 
-                          onClick={() => updateStaffStatus(member.id, 'off_duty')}
-                          className="set-off-duty-btn"
-                        >
-                          Set Off Duty
-                        </button>
-                      )}
+        <main className="dashboard-main">
+          <div className="staff-management">
+            <header className="section-header">
+              <h2>Staff Management</h2>
+              <button 
+                className="add-staff-btn"
+                onClick={() => setIsAddingStaff(!isAddingStaff)}
+              >
+                {isAddingStaff ? 'Cancel' : 'Add New Staff'}
+              </button>
+            </header>
+            
+            {error && <div className="error-message">{error}</div>}
+            {successMessage && <div className="success-message">{successMessage}</div>}
+            
+            {isAddingStaff && (
+              <div className="add-staff-form">
+                <h3>Add New Staff Member</h3>
+                <form onSubmit={handleSubmit}>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="first_name">First Name*</label>
+                      <input
+                        type="text"
+                        id="first_name"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        required
+                      />
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                    <div className="form-group">
+                      <label htmlFor="last_name">Last Name*</label>
+                      <input
+                        type="text"
+                        id="last_name"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="role">Role*</label>
+                      <select
+                        id="role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Select Role</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="nurse">Nurse</option>
+                        <option value="technician">Technician</option>
+                        <option value="receptionist">Receptionist</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="specialty">Specialty*</label>
+                      <select
+                        id="specialty"
+                        name="specialty"
+                        value={formData.specialty}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Select Specialty</option>
+                        <option value="emergency">Emergency Medicine</option>
+                        <option value="cardiology">Cardiology</option>
+                        <option value="neurology">Neurology</option>
+                        <option value="orthopedics">Orthopedics</option>
+                        <option value="pediatrics">Pediatrics</option>
+                        <option value="general">General</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="email">Email</label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="phone">Phone</label>
+                      <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-actions">
+                    <button type="button" onClick={() => setIsAddingStaff(false)} className="cancel-btn">
+                      Cancel
+                    </button>
+                    <button type="submit" className="submit-btn">
+                      Add Staff Member
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+            
+            <div className="staff-list">
+              <h3>Current Staff</h3>
+              
+              {loading ? (
+                <div className="loading-spinner">Loading staff...</div>
+              ) : staff.length === 0 ? (
+                <div className="empty-list">No staff members in the system</div>
+              ) : (
+                <table className="staff-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Specialty</th>
+                      <th>Contact</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff.map(member => (
+                      <tr key={member.id} className={`status-${member.status}`}>
+                        <td>
+                          <div>{member.first_name} {member.last_name}</div>
+                          <div className="time-small">ID: {member.id}</div>
+                        </td>
+                        <td className="capitalize">
+                          <div>{member.role}</div>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${member.status}`}>
+                            {member.status === 'available' ? 'Available' :
+                             member.status === 'busy' ? 'Busy' : 'Off Duty'}
+                          </span>
+                        </td>
+                        <td className="capitalize">
+                          <div>{member.specialty}</div>
+                          <div className="time-small">Department</div>
+                        </td>
+                        <td>
+                          {member.email && <div>{member.email}</div>}
+                          {member.phone && <div className="time-small">{member.phone}</div>}
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            {member.status !== 'available' && (
+                              <button 
+                                onClick={() => updateStaffStatus(member.id, 'available')}
+                                className="start-treatment-btn"
+                              >
+                                Set Available
+                              </button>
+                            )}
+                            {member.status !== 'busy' && (
+                              <button 
+                                onClick={() => updateStaffStatus(member.id, 'busy')}
+                                className="complete-treatment-btn"
+                              >
+                                Set Busy
+                              </button>
+                            )}
+                            {member.status !== 'off_duty' && (
+                              <button 
+                                onClick={() => updateStaffStatus(member.id, 'off_duty')}
+                                className="discharge-btn"
+                              >
+                                Set Off Duty
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
+      
+      <footer className="dashboard-footer">
+        <p>TriageAI Admin Dashboard &copy; {new Date().getFullYear()}</p>
+      </footer>
     </div>
   );
 };

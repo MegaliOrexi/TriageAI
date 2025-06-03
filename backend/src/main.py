@@ -8,7 +8,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=["*"])  # Allow all origins for development, restrict in production
+# Disable automatic slash redirects
+app.url_map.strict_slashes = False
+
+# Configure CORS with all necessary settings
+CORS(app, 
+     resources={r"/*": {
+         "origins": "*",
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "allow_headers": ["Content-Type", "Authorization", "apikey", "Prefer"],
+         "expose_headers": ["Content-Type", "Authorization"],
+         "supports_credentials": True,
+         "send_wildcard": False,
+         "max_age": 3600
+     }})
 
 # Import routes
 from src.routes.patients import patients_bp

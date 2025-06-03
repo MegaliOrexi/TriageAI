@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Resource } from '../lib/supabase';
+import { Link, useNavigate } from 'react-router-dom';
 
 const ResourceManagement: FC = () => {
+  const navigate = useNavigate();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -133,171 +135,219 @@ const ResourceManagement: FC = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
   return (
-    <div className="resource-management">
-      <header className="section-header">
-        <h2>Resource Management</h2>
-        <button 
-          className="add-resource-btn"
-          onClick={() => setIsAddingResource(!isAddingResource)}
-        >
-          {isAddingResource ? 'Cancel' : 'Add New Resource'}
-        </button>
+    <div className="admin-dashboard">
+      <header className="dashboard-header">
+        <h1>TriageAI Admin Dashboard</h1>
+        <div className="header-actions">
+          <button className="view-patient-queue" onClick={() => window.open('/', '_blank')}>
+            View Patient Queue
+          </button>
+          <button className="sign-out" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        </div>
       </header>
       
-      {error && <div className="error-message">{error}</div>}
-      {successMessage && <div className="success-message">{successMessage}</div>}
-      
-      {isAddingResource && (
-        <div className="add-resource-form">
-          <h3>Add New Resource</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="name">Resource Name*</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="type">Resource Type*</label>
-                <select
-                  id="type"
-                  name="type"
-                  value={formData.type}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select Type</option>
-                  <option value="x_ray">X-Ray</option>
-                  <option value="mri">MRI</option>
-                  <option value="ct_scan">CT Scan</option>
-                  <option value="ultrasound">Ultrasound</option>
-                  <option value="room">Treatment Room</option>
-                  <option value="icu_bed">ICU Bed</option>
-                  <option value="bed">Regular Bed</option>
-                  <option value="lab">Lab Equipment</option>
-                  <option value="ekg">EKG Machine</option>
-                </select>
-              </div>
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="capacity">Capacity*</label>
-                <input
-                  type="number"
-                  id="capacity"
-                  name="capacity"
-                  value={formData.capacity}
-                  onChange={handleInputChange}
-                  min="1"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group full-width">
-                <label htmlFor="description">Description</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-            
-            <div className="form-actions">
-              <button type="button" onClick={() => setIsAddingResource(false)} className="cancel-btn">
-                Cancel
-              </button>
-              <button type="submit" className="submit-btn">
-                Add Resource
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-      
-      <div className="resource-list">
-        <h3>Current Resources</h3>
+      <div className="dashboard-content">
+        <nav className="dashboard-nav">
+          <ul>
+            <li>
+              <Link to="/admin">Dashboard</Link>
+            </li>
+            <li>
+              <Link to="/admin/patients">Patients</Link>
+            </li>
+            <li>
+              <Link to="/admin/staff">Staff</Link>
+            </li>
+            <li className="active">
+              <Link to="/admin/resources">Resources</Link>
+            </li>
+            <li>
+              <Link to="/admin/settings">Settings</Link>
+            </li>
+          </ul>
+        </nav>
         
-        {loading ? (
-          <div className="loading-spinner">Loading resources...</div>
-        ) : resources.length === 0 ? (
-          <div className="empty-list">No resources in the system</div>
-        ) : (
-          <table className="resource-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Capacity</th>
-                <th>Status</th>
-                <th>Description</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resources.map(resource => (
-                <tr key={resource.id} className={`status-${resource.status}`}>
-                  <td>{resource.name}</td>
-                  <td className="capitalize">
-                    {resource.type.replace(/_/g, ' ')}
-                  </td>
-                  <td>
-                    {resource.available_capacity} / {resource.capacity}
-                  </td>
-                  <td>
-                    <span className={`status-badge ${resource.status}`}>
-                      {resource.status === 'available' ? 'Available' :
-                       resource.status === 'in_use' ? 'In Use' : 'Maintenance'}
-                    </span>
-                  </td>
-                  <td className="description-cell">
-                    {resource.description || 'No description'}
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      {resource.status !== 'available' && (
-                        <button 
-                          onClick={() => updateResourceStatus(resource.id, 'available')}
-                          className="set-available-btn"
-                        >
-                          Set Available
-                        </button>
-                      )}
-                      {resource.status !== 'in_use' && resource.available_capacity > 0 && (
-                        <button 
-                          onClick={() => updateResourceStatus(resource.id, 'in_use')}
-                          className="set-in-use-btn"
-                        >
-                          Set In Use
-                        </button>
-                      )}
-                      {resource.status !== 'maintenance' && (
-                        <button 
-                          onClick={() => updateResourceStatus(resource.id, 'maintenance')}
-                          className="set-maintenance-btn"
-                        >
-                          Set Maintenance
-                        </button>
-                      )}
+        <main className="dashboard-main">
+          <div className="resource-management">
+            <header className="section-header">
+              <h2>Resource Management</h2>
+              <button 
+                className="add-resource-btn"
+                onClick={() => setIsAddingResource(!isAddingResource)}
+              >
+                {isAddingResource ? 'Cancel' : 'Add New Resource'}
+              </button>
+            </header>
+            
+            {error && <div className="error-message">{error}</div>}
+            {successMessage && <div className="success-message">{successMessage}</div>}
+            
+            {isAddingResource && (
+              <div className="add-resource-form">
+                <h3>Add New Resource</h3>
+                <form onSubmit={handleSubmit}>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="name">Resource Name*</label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                      />
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                    <div className="form-group">
+                      <label htmlFor="type">Resource Type*</label>
+                      <select
+                        id="type"
+                        name="type"
+                        value={formData.type}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="">Select Type</option>
+                        <option value="x_ray">X-Ray</option>
+                        <option value="mri">MRI</option>
+                        <option value="ct_scan">CT Scan</option>
+                        <option value="ultrasound">Ultrasound</option>
+                        <option value="room">Treatment Room</option>
+                        <option value="icu_bed">ICU Bed</option>
+                        <option value="bed">Regular Bed</option>
+                        <option value="lab">Lab Equipment</option>
+                        <option value="ekg">EKG Machine</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="capacity">Capacity*</label>
+                      <input
+                        type="number"
+                        id="capacity"
+                        name="capacity"
+                        value={formData.capacity}
+                        onChange={handleInputChange}
+                        min="1"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group full-width">
+                      <label htmlFor="description">Description</label>
+                      <textarea
+                        id="description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-actions">
+                    <button type="button" onClick={() => setIsAddingResource(false)} className="cancel-btn">
+                      Cancel
+                    </button>
+                    <button type="submit" className="submit-btn">
+                      Add Resource
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+            
+            <div className="resource-list">
+              <h3>Current Resources</h3>
+              
+              {loading ? (
+                <div className="loading-spinner">Loading resources...</div>
+              ) : resources.length === 0 ? (
+                <div className="empty-list">No resources in the system</div>
+              ) : (
+                <table className="resource-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Capacity</th>
+                      <th>Description</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resources.map(resource => (
+                      <tr key={resource.id} className={`status-${resource.status}`}>
+                        <td>{resource.name}</td>
+                        <td className="capitalize">
+                          {resource.type.replace(/_/g, ' ')}
+                        </td>
+                        <td>
+                          <span className={`status-badge ${resource.status}`}>
+                            {resource.status === 'available' ? 'Available' :
+                             resource.status === 'in_use' ? 'In Use' : 'Maintenance'}
+                          </span>
+                        </td>
+                        <td>
+                          <div>{resource.available_capacity} / {resource.capacity}</div>
+                          <div className="time-small">Available / Total</div>
+                        </td>
+                        <td className="description-cell">
+                          {resource.description || 'No description'}
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            {resource.status !== 'available' && (
+                              <button 
+                                onClick={() => updateResourceStatus(resource.id, 'available')}
+                                className="start-treatment-btn"
+                              >
+                                Set Available
+                              </button>
+                            )}
+                            {resource.status !== 'in_use' && resource.available_capacity > 0 && (
+                              <button 
+                                onClick={() => updateResourceStatus(resource.id, 'in_use')}
+                                className="complete-treatment-btn"
+                              >
+                                Set In Use
+                              </button>
+                            )}
+                            {resource.status !== 'maintenance' && (
+                              <button 
+                                onClick={() => updateResourceStatus(resource.id, 'maintenance')}
+                                className="discharge-btn"
+                              >
+                                Set Maintenance
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
+      
+      <footer className="dashboard-footer">
+        <p>TriageAI Admin Dashboard &copy; {new Date().getFullYear()}</p>
+      </footer>
     </div>
   );
 };

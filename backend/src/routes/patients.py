@@ -3,12 +3,21 @@ import requests
 import json
 import joblib
 import pandas as pd
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, make_response
 from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
 patients_bp = Blueprint('patients', __name__)
+
+# Add OPTIONS handling for CORS preflight requests
+@patients_bp.route('/', methods=['OPTIONS'])
+def handle_options():
+    response = make_response()
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,apikey,Prefer')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    return response
 
 # Load the triage model
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
