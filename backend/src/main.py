@@ -13,8 +13,8 @@ app.url_map.strict_slashes = False
 
 # Configure CORS with all necessary settings
 CORS(app, 
-     resources={r"/*": {
-         "origins": "*",
+     resources={r"/*": {  # Changed from "/" to "/*" to match all routes
+         "origins": ["http://localhost:3000", "http://localhost:5173"],  # Common dev server ports
          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          "allow_headers": ["Content-Type", "Authorization", "apikey", "Prefer"],
          "expose_headers": ["Content-Type", "Authorization"],

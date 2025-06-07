@@ -34,6 +34,8 @@ def supabase_request(method, path, data=None, params=None):
         response = requests.put(url, headers=headers, json=data)
     elif method == 'DELETE':
         response = requests.delete(url, headers=headers, params=params)
+    elif method == 'PATCH':
+        response = requests.patch(url, headers=headers, json=data)
     else:
         raise ValueError(f"Unsupported method: {method}")
     
@@ -83,8 +85,8 @@ class TriageFuzzyLogic:
             weighted_staff_availability_score
         )
         
-        # Ensure score is within bounds
-        priority_score = min(100, max(0, priority_score))
+        # Ensure score is within bounds and convert to integer
+        priority_score = int(min(100, max(0, priority_score)))
         
         # Return priority score and component details
         return {
@@ -92,23 +94,23 @@ class TriageFuzzyLogic:
             "components": {
                 "risk_level": {
                     "value": patient_data.get('risk_level', 1),
-                    "score": risk_level_score,
-                    "weighted_score": weighted_risk_level_score
+                    "score": int(risk_level_score),
+                    "weighted_score": int(weighted_risk_level_score)
                 },
                 "waiting_time": {
                     "value": patient_data.get('waiting_time_minutes', 0),
-                    "score": waiting_time_score,
-                    "weighted_score": weighted_waiting_time_score
+                    "score": int(waiting_time_score),
+                    "weighted_score": int(weighted_waiting_time_score)
                 },
                 "resource_availability": {
                     "value": patient_data.get('resource_availability', 75),
-                    "score": resource_availability_score,
-                    "weighted_score": weighted_resource_availability_score
+                    "score": int(resource_availability_score),
+                    "weighted_score": int(weighted_resource_availability_score)
                 },
                 "staff_availability": {
                     "value": patient_data.get('staff_availability', 80),
-                    "score": staff_availability_score,
-                    "weighted_score": weighted_staff_availability_score
+                    "score": int(staff_availability_score),
+                    "weighted_score": int(weighted_staff_availability_score)
                 }
             }
         }
@@ -179,11 +181,22 @@ def get_queue():
         fuzzy_logic = TriageFuzzyLogic(settings)
         
         # Calculate waiting time and priority for each patient
-        now = datetime.now()
+        now = datetime.utcnow()  # Use UTC time
         for patient in patients:
             # Calculate waiting time in minutes
-            arrival_time = datetime.fromisoformat(patient['arrival_time'])
-            waiting_time_minutes = (now - arrival_time).total_seconds() / 60
+            # Handle both ISO format with and without timezone
+            arrival_time_str = patient['arrival_time']
+            try:
+                # Try parsing with timezone info
+                arrival_time = datetime.fromisoformat(arrival_time_str)
+                # Convert to UTC if it has timezone info
+                if arrival_time.tzinfo is not None:
+                    arrival_time = arrival_time.astimezone(None).replace(tzinfo=None)
+            except ValueError:
+                # If parsing fails, try removing timezone info
+                arrival_time = datetime.fromisoformat(arrival_time_str.split('+')[0].split('Z')[0])
+            
+            waiting_time_minutes = int((now - arrival_time).total_seconds() / 60)  # Convert to integer minutes
             
             # Get resource and staff availability for this patient
             resource_availability = calculate_resource_availability(patient)
@@ -198,27 +211,28 @@ def get_queue():
             })
             
             # Update patient with priority score
-            patient['priority_score'] = priority_result['priority_score']
+            patient['priority_score'] = int(priority_result['priority_score'])  # Convert to integer
             patient['waiting_time_minutes'] = waiting_time_minutes
             
             # Update patient in database
-            params = {'id': f"eq.{patient['id']}"}
             update_data = {
-                'priority_score': priority_result['priority_score'],
-                'last_priority_update': now.isoformat()
+                'priority_score': int(priority_result['priority_score']),  # Convert to integer
+                'last_priority_update': now.isoformat() + 'Z',  # Add UTC indicator
             }
-            supabase_request('PUT', '/rest/v1/patients', data=update_data, params=params)
+            # Format the query parameters correctly for Supabase
+            result = supabase_request('PATCH', f'/rest/v1/patients?id=eq.{patient["id"]}', data=update_data)
             
             # Log priority update
             log_data = {
                 'patient_id': patient['id'],
-                'previous_score': patient.get('priority_score', 0),
-                'new_score': priority_result['priority_score'],
+                'previous_score': int(patient.get('priority_score', 0)),  # Convert to integer
+                'new_score': int(priority_result['priority_score']),  # Convert to integer
                 'waiting_time_minutes': waiting_time_minutes,
                 'risk_level': patient['risk_level'],
-                'resource_availability_factor': resource_availability,
-                'staff_availability_factor': staff_availability,
-                'reason': 'Regular queue update'
+                'resource_availability_factor': int(resource_availability),  # Convert to integer
+                'staff_availability_factor': int(staff_availability),  # Convert to integer
+                'reason': 'Regular queue update',
+                'created_at': now.isoformat() + 'Z'  # Add UTC indicator
             }
             supabase_request('POST', '/rest/v1/priority_logs', data=log_data)
         
@@ -227,6 +241,7 @@ def get_queue():
         
         return jsonify(sorted_queue)
     except Exception as e:
+        print(f"Queue Error: {str(e)}")  # Add debug logging
         return jsonify({"error": str(e)}), 500
 
 @triage_bp.route('/calculate', methods=['POST'])
@@ -255,9 +270,20 @@ def calculate_priority():
         fuzzy_logic = TriageFuzzyLogic(settings)
         
         # Calculate waiting time in minutes
-        now = datetime.now()
-        arrival_time = datetime.fromisoformat(patient['arrival_time'])
-        waiting_time_minutes = (now - arrival_time).total_seconds() / 60
+        now = datetime.utcnow()  # Use UTC time
+        # Handle both ISO format with and without timezone
+        arrival_time_str = patient['arrival_time']
+        try:
+            # Try parsing with timezone info
+            arrival_time = datetime.fromisoformat(arrival_time_str)
+            # Convert to UTC if it has timezone info
+            if arrival_time.tzinfo is not None:
+                arrival_time = arrival_time.astimezone(None).replace(tzinfo=None)
+        except ValueError:
+            # If parsing fails, try removing timezone info
+            arrival_time = datetime.fromisoformat(arrival_time_str.split('+')[0].split('Z')[0])
+        
+        waiting_time_minutes = int((now - arrival_time).total_seconds() / 60)  # Convert to integer minutes
         
         # Get resource and staff availability
         resource_availability = data.get('resource_availability', calculate_resource_availability(patient))
@@ -273,26 +299,28 @@ def calculate_priority():
         
         # Update patient with priority score
         update_data = {
-            'priority_score': priority_result['priority_score'],
-            'last_priority_update': now.isoformat()
+            'priority_score': int(priority_result['priority_score']),  # Convert to integer
+            'last_priority_update': now.isoformat() + 'Z',  # Add UTC indicator
         }
-        supabase_request('PUT', '/rest/v1/patients', data=update_data, params=params)
+        # Format the query parameters correctly for Supabase
+        result = supabase_request('PATCH', f'/rest/v1/patients?id=eq.{patient["id"]}', data=update_data)
         
         # Log priority update
         log_data = {
             'patient_id': patient['id'],
-            'previous_score': patient.get('priority_score', 0),
-            'new_score': priority_result['priority_score'],
+            'previous_score': int(patient.get('priority_score', 0)),  # Convert to integer
+            'new_score': int(priority_result['priority_score']),  # Convert to integer
             'waiting_time_minutes': waiting_time_minutes,
             'risk_level': patient['risk_level'],
-            'resource_availability_factor': resource_availability,
-            'staff_availability_factor': staff_availability,
-            'reason': 'Manual calculation'
+            'resource_availability_factor': int(resource_availability),  # Convert to integer
+            'staff_availability_factor': int(staff_availability),  # Convert to integer
+            'reason': 'Manual calculation',
+            'created_at': now.isoformat() + 'Z'  # Add UTC indicator
         }
         supabase_request('POST', '/rest/v1/priority_logs', data=log_data)
         
         # Update patient object for response
-        patient['priority_score'] = priority_result['priority_score']
+        patient['priority_score'] = int(priority_result['priority_score'])  # Convert to integer
         patient['waiting_time_minutes'] = waiting_time_minutes
         
         return jsonify({
@@ -300,6 +328,7 @@ def calculate_priority():
             'priority_details': priority_result
         })
     except Exception as e:
+        print(f"Calculate Priority Error: {str(e)}")  # Add debug logging
         return jsonify({"error": str(e)}), 500
 
 @triage_bp.route('/settings', methods=['GET'])
@@ -416,7 +445,7 @@ def get_statistics():
             'waiting_time': {
                 'average_minutes': avg_waiting_time
             },
-            'timestamp': datetime.now().isoformat()
+            'created_at': datetime.now().isoformat()
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

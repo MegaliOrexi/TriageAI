@@ -6,18 +6,11 @@ import pandas as pd
 from flask import Blueprint, jsonify, request, make_response
 from datetime import datetime
 from dotenv import load_dotenv
+from sqlalchemy import insert
+from flask_sqlalchemy import SQLAlchemy
 load_dotenv()
 
 patients_bp = Blueprint('patients', __name__)
-
-# Add OPTIONS handling for CORS preflight requests
-@patients_bp.route('/', methods=['OPTIONS'])
-def handle_options():
-    response = make_response()
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,apikey,Prefer')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    return response
 
 # Load the triage model
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
@@ -90,105 +83,88 @@ def get_patient(patient_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@patients_bp.route('/predict', methods=['POST'])
-def predict_triage():
-    """Predict patient triage level"""
-    try:
-        data = request.json
-        
-        # Required fields for the model
-        required_fields = [
-            'Systolic_BP', 'Diastolic_BP', 'Pulse_Rate', 'Respiratory_Rate',
-            'SPO2', 'Temperature', 'Age', 'Lactate', 'Shock_Index', 'NEWS2',
-            'Ambulance_Arrival', 'Diabetes', 'Hypertension', 'COPD',
-            'AVPU', 'Chief_Complaint', 'Symptom_Duration'
-        ]
-        
-        # Validate required fields
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
-        
-        # Convert data to DataFrame for prediction
-        df = pd.DataFrame([data])
-        
-        # Make prediction
-        prediction = triage_model.predict(df)
-        risk_level = int(prediction[0])  # Convert numpy int to Python int
-        
-        return jsonify({
-            "prediction": risk_level,
-            "risk_level": ["Low", "Medium", "High"][risk_level]
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @patients_bp.route('/', methods=['POST'])
-def create_patient():
-    """Create a new patient with triage prediction"""
+def add_patient():
     try:
         data = request.json
         
-        # Validate required fields
-        required_fields = ['first_name', 'last_name', 'date_of_birth']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
+        # Calculate Shock Index
+        data['Shock_Index'] = data['Pulse_Rate'] / data['Systolic_BP']
         
-        # Get triage data from request
-        triage_data = {
-            'Systolic_BP': data.get('Systolic_BP'),
-            'Diastolic_BP': data.get('Diastolic_BP'),
-            'Pulse_Rate': data.get('Pulse_Rate'),
-            'Respiratory_Rate': data.get('Respiratory_Rate'),
-            'SPO2': data.get('SPO2'),
-            'Temperature': data.get('Temperature'),
-            'Age': data.get('Age'),
-            'Lactate': data.get('Lactate'),
-            'Shock_Index': data.get('Shock_Index'),
-            'NEWS2': data.get('NEWS2'),
-            'Ambulance_Arrival': data.get('Ambulance_Arrival'),
-            'Diabetes': data.get('Diabetes'),
-            'Hypertension': data.get('Hypertension'),
-            'COPD': data.get('COPD'),
-            'AVPU': data.get('AVPU'),
-            'Chief_Complaint': data.get('Chief_Complaint'),
-            'Symptom_Duration': data.get('Symptom_Duration')
-        }
+        # Calculate NEWS2 score
+        def calculate_NEWS2(data):
+            score = 0
+            
+            # Respiratory Rate
+            resp_rate = data['Respiratory_Rate']
+            if resp_rate <= 8: score += 3
+            elif 9 <= resp_rate <= 11: score += 1
+            elif 21 <= resp_rate <= 24: score += 2
+            elif resp_rate >= 25: score += 3
+            
+            # SPO2 (assuming room air)
+            spo2 = data['SPO2']
+            if spo2 <= 92: score += 3
+            elif 93 <= spo2 <= 94: score += 2
+            elif 95 <= spo2 <= 96: score += 1
+            
+            # Systolic BP
+            sys_bp = data['Systolic_BP']
+            if sys_bp <= 90: score += 3
+            elif 91 <= sys_bp <= 100: score += 2
+            elif 101 <= sys_bp <= 110: score += 1
+            elif sys_bp >= 220: score += 3
+            
+            # Pulse
+            pulse = data['Pulse_Rate']
+            if pulse <= 40: score += 3
+            elif 41 <= pulse <= 50: score += 1
+            elif 91 <= pulse <= 110: score += 1
+            elif 111 <= pulse <= 130: score += 2
+            elif pulse >= 131: score += 3
+            
+            # Temperature
+            temp = data['Temperature']
+            if temp <= 35.0: score += 3
+            elif 35.1 <= temp <= 36.0: score += 1
+            elif 38.1 <= temp <= 39.0: score += 1
+            elif temp >= 39.1: score += 2
+            
+            # AVPU
+            if data['AVPU'] != 'Alert': score += 3
+            
+            return score
         
-        # Validate triage data
-        for field, value in triage_data.items():
-            if value is None:
-                return jsonify({"error": f"Missing triage field: {field}"}), 400
+        # Add NEWS2 score to data
+        data['NEWS2'] = calculate_NEWS2(data)
         
         # Make prediction using the model
-        df = pd.DataFrame([triage_data])
+        df = pd.DataFrame([data])
         prediction = triage_model.predict(df)
         risk_level = int(prediction[0])
         
-        # Prepare patient data for database
-        patient_data = {
-            'first_name': data['first_name'],
-            'last_name': data['last_name'],
-            'date_of_birth': data['date_of_birth'],
-            'gender': data.get('gender'),
-            'status': 'waiting',
-            'arrival_time': datetime.now().isoformat(),
-            'risk_level': risk_level,
-            'chief_complaint': triage_data['Chief_Complaint'],
-            'triage_data': triage_data  # Store all triage data as JSONB
-        }
+        # Add prediction results to data
+        data['risk_level'] = risk_level
+        data['status'] = 'waiting'
+        data['arrival_time'] = datetime.now().isoformat()
         
-        # Make request to Supabase
-        result = supabase_request('POST', '/rest/v1/patients', data=patient_data)
+        data['avpu'] = data.pop('AVPU', None)
+
+        # Insert into database with calculated scores and prediction
+        result = supabase_request('POST', '/rest/v1/patients', data=data)
         
         return jsonify({
-            **result[0],
-            "risk_level_text": ["Low", "Medium", "High"][risk_level]
+            'message': 'Patient added successfully',
+            'id': result[0]['id'],
+            'risk_level': risk_level,
+            'risk_level_text': ["Low", "Medium", "High"][risk_level],
+            'shock_index': data['Shock_Index'],
+            'news2_score': data['NEWS2']
         }), 201
+        
     except Exception as e:
-        print("Error creating patient:", str(e))  # Add debug logging
-        return jsonify({"error": str(e)}), 500
+        print(f"Error adding patient: {str(e)}")  # Add debug logging
+        return jsonify({'error': str(e)}), 500
 
 @patients_bp.route('/<patient_id>', methods=['PUT'])
 def update_patient(patient_id):

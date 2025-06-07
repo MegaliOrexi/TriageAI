@@ -1,8 +1,31 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import { supabase } from '../lib/supabase';
 import type { Staff } from '../lib/supabase';
+import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
+
+// Create an axios instance with default config
+const api = axios.create({
+  baseURL: 'http://localhost:5000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true
+});
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    }
+    return Promise.reject(error);
+  }
+);
 
 const StaffManagement: FC = () => {
   const navigate = useNavigate();
@@ -23,31 +46,19 @@ const StaffManagement: FC = () => {
   useEffect(() => {
     fetchStaff();
     
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('public:staff')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'staff'
-      }, fetchStaff)
-      .subscribe();
-
+    // Set up polling to refresh data periodically
+    const interval = setInterval(fetchStaff, 10000); // Poll every 10 seconds
+    
     return () => {
-      subscription.unsubscribe();
+      clearInterval(interval);
     };
   }, []);
 
   const fetchStaff = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('staff')
-        .select('*')
-        .order('last_name', { ascending: true });
-      
-      if (error) throw error;
-      setStaff(data || []);
+      const response = await api.get('/api/staff');
+      setStaff(response.data || []);
     } catch (err) {
       console.error('Error fetching staff:', err);
       setError('Failed to load staff. Please try again later.');
@@ -75,16 +86,11 @@ const StaffManagement: FC = () => {
         role: formData.role,
         specialty: formData.specialty,
         email: formData.email,
-        phone: formData.phone,
-        status: 'available'
+        phone: formData.phone
       };
       
-      // Insert staff into database
-      const { error } = await supabase
-        .from('staff')
-        .insert([staffData]);
-      
-      if (error) throw error;
+      // Send to backend API
+      await api.post('/api/staff', staffData);
       
       // Reset form and show success message
       setFormData({
@@ -109,12 +115,7 @@ const StaffManagement: FC = () => {
 
   const updateStaffStatus = async (staffId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('staff')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', staffId);
-      
-      if (error) throw error;
+      await api.put(`/api/staff/${staffId}/availability`, { status: newStatus });
       
       // Refresh staff list
       fetchStaff();
@@ -125,7 +126,7 @@ const StaffManagement: FC = () => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await api.post('/api/auth/signout');
     navigate('/login');
   };
 

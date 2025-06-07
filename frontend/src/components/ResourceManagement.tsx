@@ -1,8 +1,31 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import { supabase } from '../lib/supabase';
 import type { Resource } from '../lib/supabase';
+import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
+
+// Create an axios instance with default config
+const api = axios.create({
+  baseURL: 'http://localhost:5000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true
+});
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error);
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    }
+    return Promise.reject(error);
+  }
+);
 
 const ResourceManagement: FC = () => {
   const navigate = useNavigate();
@@ -21,31 +44,19 @@ const ResourceManagement: FC = () => {
   useEffect(() => {
     fetchResources();
     
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('public:resources')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'resources'
-      }, fetchResources)
-      .subscribe();
-
+    // Set up polling to refresh data periodically
+    const interval = setInterval(fetchResources, 10000); // Poll every 10 seconds
+    
     return () => {
-      subscription.unsubscribe();
+      clearInterval(interval);
     };
   }, []);
 
   const fetchResources = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('resources')
-        .select('*')
-        .order('type', { ascending: true });
-      
-      if (error) throw error;
-      setResources(data || []);
+      const response = await api.get('/api/resources');
+      setResources(response.data || []);
     } catch (err) {
       console.error('Error fetching resources:', err);
       setError('Failed to load resources. Please try again later.');
@@ -72,16 +83,10 @@ const ResourceManagement: FC = () => {
         type: formData.type,
         description: formData.description,
         capacity: parseInt(formData.capacity),
-        available_capacity: parseInt(formData.capacity),
-        status: 'available'
       };
       
-      // Insert resource into database
-      const { error } = await supabase
-        .from('resources')
-        .insert([resourceData]);
-      
-      if (error) throw error;
+      // Send to backend API
+      await api.post('/api/resources', resourceData);
       
       // Reset form and show success message
       setFormData({
@@ -104,28 +109,7 @@ const ResourceManagement: FC = () => {
 
   const updateResourceStatus = async (resourceId: string, newStatus: string) => {
     try {
-      const resource = resources.find(r => r.id === resourceId);
-      if (!resource) return;
-      
-      let availableCapacity = resource.available_capacity;
-      
-      // Update available capacity based on status change
-      if (resource.status === 'available' && newStatus === 'in_use') {
-        availableCapacity = Math.max(0, resource.available_capacity - 1);
-      } else if (resource.status === 'in_use' && newStatus === 'available') {
-        availableCapacity = Math.min(resource.capacity, resource.available_capacity + 1);
-      }
-      
-      const { error } = await supabase
-        .from('resources')
-        .update({ 
-          status: newStatus, 
-          available_capacity: availableCapacity,
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', resourceId);
-      
-      if (error) throw error;
+      await api.put(`/api/resources/${resourceId}/status`, { status: newStatus });
       
       // Refresh resource list
       fetchResources();
@@ -136,7 +120,7 @@ const ResourceManagement: FC = () => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await api.post('/api/auth/signout');
     navigate('/login');
   };
 

@@ -41,7 +41,7 @@ const PatientView: FC = () => {
       
       // Try to use the triage API endpoint first
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/triage/queue`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/triage/queue`);
         if (response.ok) {
           const data = await response.json();
           setPatients(data);
@@ -53,17 +53,17 @@ const PatientView: FC = () => {
         console.error('Error fetching from API, falling back to direct Supabase query:', err);
       }
       
-      // Fallback to direct Supabase query
-      const { data, error } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('status', 'waiting')
-        .order('priority_score', { ascending: false });
+      // // Fallback to direct Supabase query
+      // const { data, error } = await supabase
+      //   .from('patients')
+      //   .select('*')
+      //   .eq('status', 'waiting')
+      //   .order('priority_score', { ascending: false });
       
-      if (error) throw error;
+      // if (error) throw error;
       
-      setPatients(data || []);
-      setLastUpdated(new Date());
+      // setPatients(data || []);
+      // setLastUpdated(new Date());
     } catch (err) {
       console.error('Error fetching patient queue:', err);
       setError('Unable to load patient queue. Please try again later.');
