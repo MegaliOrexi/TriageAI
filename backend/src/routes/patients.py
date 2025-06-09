@@ -6,8 +6,6 @@ import pandas as pd
 from flask import Blueprint, jsonify, request, make_response
 from datetime import datetime
 from dotenv import load_dotenv
-from sqlalchemy import insert
-from flask_sqlalchemy import SQLAlchemy
 load_dotenv()
 
 patients_bp = Blueprint('patients', __name__)

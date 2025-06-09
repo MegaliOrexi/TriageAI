@@ -45,7 +45,7 @@ const PatientManagement: FC = () => {
 
   const fetchPatients = async (isInitialFetch: boolean = false) => {
     try {
-      const response = await api.get('/patients');
+      const response = await api.get('/api/patients');
       setPatients(response.data || []);
     } catch (err) {
       console.error('Error fetching patients:', err);
@@ -63,7 +63,7 @@ const PatientManagement: FC = () => {
     setPredicting(true);
     
     try {
-      const response = await api.post('/patients', patientData);
+      const response = await api.post('/api/patients', patientData);
 
       if (response.status === 201) {
         setSuccessMessage('Patient added successfully!');
@@ -84,7 +84,7 @@ const PatientManagement: FC = () => {
 
   const updatePatientStatus = async (patientId: string, newStatus: string) => {
     try {
-      await api.put(`/patients/${patientId}/status`, { status: newStatus });
+      await api.put(`/api/patients/${patientId}/status`, { status: newStatus });
       
       // Refresh patient list
       fetchPatients(false);
