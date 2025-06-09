@@ -47,7 +47,7 @@ const StaffManagement: FC = () => {
     fetchStaff();
     
     // Set up polling to refresh data periodically
-    const interval = setInterval(fetchStaff, 10000); // Poll every 10 seconds
+    const interval = setInterval(fetchStaff, 100000); // Poll every 10 seconds
     
     return () => {
       clearInterval(interval);

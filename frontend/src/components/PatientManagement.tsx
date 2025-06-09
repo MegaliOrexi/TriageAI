@@ -45,7 +45,7 @@ const PatientManagement: FC = () => {
 
   const fetchPatients = async (isInitialFetch: boolean = false) => {
     try {
-      const response = await api.get('/api/patients');
+      const response = await api.get('/patients');
       setPatients(response.data || []);
     } catch (err) {
       console.error('Error fetching patients:', err);
@@ -63,18 +63,20 @@ const PatientManagement: FC = () => {
     setPredicting(true);
     
     try {
-      const response = await api.post('/api/patients', patientData);
+      const response = await api.post('/patients', patientData);
 
-      if (response.status === 200) {
+      if (response.status === 201) {
         setSuccessMessage('Patient added successfully!');
         setIsAddingPatient(false);
         fetchPatients(false);
       } else {
         setError('Failed to add patient. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding patient:', error);
-      setError('Failed to add patient. Please try again.');
+      // Show the specific error message from the backend if available
+      const errorMessage = error.response?.data?.error || 'Failed to add patient. Please try again.';
+      setError(errorMessage);
     } finally {
       setPredicting(false);
     }
@@ -82,7 +84,7 @@ const PatientManagement: FC = () => {
 
   const updatePatientStatus = async (patientId: string, newStatus: string) => {
     try {
-      await api.put(`/api/patients/${patientId}/status`, { status: newStatus });
+      await api.put(`/patients/${patientId}/status`, { status: newStatus });
       
       // Refresh patient list
       fetchPatients(false);

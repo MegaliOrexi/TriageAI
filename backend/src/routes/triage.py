@@ -2,9 +2,11 @@ import os
 import requests
 import json
 import math
+import pandas as pd
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from ..models.triage_model import triage_model  # Import the triage model
 load_dotenv()
 
 triage_bp = Blueprint('triage', __name__)
@@ -505,3 +507,103 @@ def calculate_staff_availability(patient):
     except Exception as e:
         print(f"Error calculating staff availability: {e}")
         return 80  # Default value
+
+@triage_bp.route('/test', methods=['POST'])
+def test_model():
+    """Test the triage model without saving to database"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = [
+            'Pulse_Rate', 'Systolic_BP', 'Respiratory_Rate', 'SPO2', 
+            'Temperature', 'AVPU', 'Lactate'
+        ]
+        
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({
+                "error": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+            
+        # Calculate Shock Index
+        try:
+            data['Shock_Index'] = float(data['Pulse_Rate']) / float(data['Systolic_BP'])
+        except (ZeroDivisionError, ValueError) as e:
+            return jsonify({
+                "error": "Invalid values for Pulse_Rate or Systolic_BP"
+            }), 400
+        
+        # Calculate NEWS2 score
+        def calculate_NEWS2(data):
+            score = 0
+            
+            try:
+                # Respiratory Rate
+                resp_rate = float(data['Respiratory_Rate'])
+                if resp_rate <= 8: score += 3
+                elif 9 <= resp_rate <= 11: score += 1
+                elif 21 <= resp_rate <= 24: score += 2
+                elif resp_rate >= 25: score += 3
+                
+                # SPO2 (assuming room air)
+                spo2 = float(data['SPO2'])
+                if spo2 <= 92: score += 3
+                elif 93 <= spo2 <= 94: score += 2
+                elif 95 <= spo2 <= 96: score += 1
+                
+                # Systolic BP
+                sys_bp = float(data['Systolic_BP'])
+                if sys_bp <= 90: score += 3
+                elif 91 <= sys_bp <= 100: score += 2
+                elif 101 <= sys_bp <= 110: score += 1
+                elif sys_bp >= 220: score += 3
+                
+                # Pulse
+                pulse = float(data['Pulse_Rate'])
+                if pulse <= 40: score += 3
+                elif 41 <= pulse <= 50: score += 1
+                elif 91 <= pulse <= 110: score += 1
+                elif 111 <= pulse <= 130: score += 2
+                elif pulse >= 131: score += 3
+                
+                # Temperature
+                temp = float(data['Temperature'])
+                if temp <= 35.0: score += 3
+                elif 35.1 <= temp <= 36.0: score += 1
+                elif 38.1 <= temp <= 39.0: score += 1
+                elif temp >= 39.1: score += 2
+                
+                # AVPU
+                if data['AVPU'] != 'Alert': score += 3
+                
+                return score
+            except (ValueError, KeyError) as e:
+                raise ValueError(f"Error calculating NEWS2 score: {str(e)}")
+        
+        # Add NEWS2 score to data
+        try:
+            data['NEWS2'] = calculate_NEWS2(data)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        
+        # Make prediction using the model
+        try:
+            df = pd.DataFrame([data])
+            prediction = triage_model.predict(df)
+            risk_level = int(prediction[0])
+            
+            return jsonify({
+                'risk_level': risk_level,
+                'risk_level_text': ["Low", "Medium", "High"][risk_level],
+                'shock_index': data['Shock_Index'],
+                'news2_score': data['NEWS2']
+            })
+        except Exception as e:
+            return jsonify({
+                "error": f"Error making triage prediction: {str(e)}"
+            }), 400
+            
+    except Exception as e:
+        print(f"Error testing model: {str(e)}")  # Add debug logging
+        return jsonify({'error': str(e)}), 500

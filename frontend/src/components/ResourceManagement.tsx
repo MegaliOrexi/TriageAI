@@ -45,7 +45,7 @@ const ResourceManagement: FC = () => {
     fetchResources();
     
     // Set up polling to refresh data periodically
-    const interval = setInterval(fetchResources, 10000); // Poll every 10 seconds
+    const interval = setInterval(fetchResources, 100000); // Poll every 10 seconds
     
     return () => {
       clearInterval(interval);

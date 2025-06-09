@@ -13,6 +13,7 @@ import PatientManagement from './components/PatientManagement';
 import StaffManagement from './components/StaffManagement';
 import ResourceManagement from './components/ResourceManagement';
 import SystemSettings from './components/SystemSettings';
+import ModelTester from './components/ModelTester';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const Root = () => {
@@ -89,6 +90,14 @@ const Root = () => {
           element={
             <ProtectedRoute session={session}>
               <SystemSettings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/model-tester" 
+          element={
+            <ProtectedRoute session={session}>
+              <ModelTester />
             </ProtectedRoute>
           } 
         />

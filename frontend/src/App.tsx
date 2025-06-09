@@ -1,29 +1,27 @@
-import { useEffect } from 'react';
-import { supabase } from './lib/supabase';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import PatientView from './components/PatientView';
+import AdminDashboard from './components/AdminDashboard';
+import PatientManagement from './components/PatientManagement';
+import StaffManagement from './components/StaffManagement';
+import ResourceManagement from './components/ResourceManagement';
+import SystemSettings from './components/SystemSettings';
+import ModelTester from './components/ModelTester';
+import './styles/App.css';
+import './styles/ModelTester.css';
 
 function App() {
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(() => {
-      // Session handling moved to main.tsx
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      () => {
-        // Session handling moved to main.tsx
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>TriageAI</h1>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<PatientView />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/patients" element={<PatientManagement />} />
+        <Route path="/admin/staff" element={<StaffManagement />} />
+        <Route path="/admin/resources" element={<ResourceManagement />} />
+        <Route path="/admin/settings" element={<SystemSettings />} />
+        <Route path="/model-tester" element={<ModelTester />} />
+      </Routes>
+    </Router>
   );
 }
 

@@ -1,4 +1,5 @@
-import { FC, useState } from 'react';
+import { useState } from 'react';
+import type { FC } from 'react';
 import type { Patient } from '../lib/supabase';
 
 interface AddPatientFormProps {
@@ -55,20 +56,26 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convert string values to numbers for numeric fields
+    // Convert string values to numbers and map field names to match backend expectations
     const patientData = {
-      ...formData,
-      systolic_bp: Number(formData.systolic_bp),
-      diastolic_bp: Number(formData.diastolic_bp),
-      pulse_rate: Number(formData.pulse_rate),
-      respiratory_rate: Number(formData.respiratory_rate),
-      spo2: Number(formData.spo2),
-      temperature: Number(formData.temperature),
-      lactate: Number(formData.lactate),
-      ambulance_arrival: formData.ambulance_arrival ? 1 : 0,
-      diabetes: formData.diabetes ? 1 : 0,
-      hypertension: formData.hypertension ? 1 : 0,
-      copd: formData.copd ? 1 : 0,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      date_of_birth: formData.date_of_birth,
+      gender: formData.gender,
+      Systolic_BP: Number(formData.systolic_bp),
+      Diastolic_BP: Number(formData.diastolic_bp),
+      Pulse_Rate: Number(formData.pulse_rate),
+      Respiratory_Rate: Number(formData.respiratory_rate),
+      SPO2: Number(formData.spo2),
+      Temperature: Number(formData.temperature),
+      Lactate: Number(formData.lactate),
+      Ambulance_Arrival: formData.ambulance_arrival ? 1 : 0,
+      Diabetes: formData.diabetes ? 1 : 0,
+      Hypertension: formData.hypertension ? 1 : 0,
+      COPD: formData.copd ? 1 : 0,
+      AVPU: formData.AVPU,
+      Chief_Complaint: formData.chief_complaint,
+      Symptom_Duration: formData.symptom_duration
     };
 
     await onSubmit(patientData);

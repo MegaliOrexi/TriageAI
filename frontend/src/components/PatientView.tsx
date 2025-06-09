@@ -1,14 +1,92 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Patient } from '../lib/supabase';
-import './PatientView.css';
 
 const PatientView: FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
+  
+  // Use ref to track the last fetch time to prevent too frequent updates
+  const lastFetchTimeRef = useRef<number>(Date.now());
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Stable sort function that considers multiple factors
+  const stableSortPatients = useCallback((patientList: Patient[]) => {
+    return [...patientList].sort((a, b) => {
+      // First, compare by risk level (highest priority)
+      if (a.risk_level !== b.risk_level) {
+        return b.risk_level - a.risk_level;
+      }
+      
+      // If risk levels are equal, compare by priority score
+      const aPriority = a.priority_score ?? 0;
+      const bPriority = b.priority_score ?? 0;
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority;
+      }
+      
+      // If priority scores are equal, compare by arrival time
+      return new Date(a.arrival_time).getTime() - new Date(b.arrival_time).getTime();
+    });
+  }, []);
+
+  const fetchPatientQueue = useCallback(async () => {
+    // Prevent fetching if less than 2 seconds have passed since last fetch
+    const now = Date.now();
+    if (now - lastFetchTimeRef.current < 2000) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      lastFetchTimeRef.current = now;
+      
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/triage/queue`);
+        if (response.ok) {
+          const data = await response.json();
+          // Use stable sort
+          const sortedData = stableSortPatients(data);
+          setPatients(sortedData);
+          setLastUpdated(new Date());
+          setError(null);
+          return;
+        }
+      } catch (err) {
+        console.error('Error fetching from API, falling back to direct Supabase query:', err);
+      }
+    } catch (err) {
+      console.error('Error fetching patient queue:', err);
+      setError('Unable to load patient queue. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  }, [stableSortPatients]);
+
+  // Debounced update function with minimum interval
+  const debouncedUpdate = useCallback(() => {
+    const minUpdateInterval = 5000; // Minimum 5 seconds between updates
+    const now = Date.now();
+    
+    if (now - lastFetchTimeRef.current < minUpdateInterval) {
+      // If an update is already scheduled, don't schedule another one
+      if (fetchTimeoutRef.current) return;
+      
+      // Schedule an update for when the minimum interval has passed
+      const timeToNextUpdate = minUpdateInterval - (now - lastFetchTimeRef.current);
+      fetchTimeoutRef.current = setTimeout(() => {
+        fetchPatientQueue();
+        fetchTimeoutRef.current = null;
+      }, timeToNextUpdate);
+      return;
+    }
+
+    // If enough time has passed, update immediately
+    fetchPatientQueue();
+  }, [fetchPatientQueue]);
 
   useEffect(() => {
     fetchPatientQueue();
@@ -21,57 +99,21 @@ const PatientView: FC = () => {
         schema: 'public', 
         table: 'patients'
       }, () => {
-        fetchPatientQueue();
+        debouncedUpdate();
       })
       .subscribe();
 
-    // Set up refresh interval
-    const intervalId = setInterval(() => {
-      fetchPatientQueue();
-    }, 30000); // Refresh every 30 seconds
+    // Set up refresh interval - every 2 minutes
+    const intervalId = setInterval(fetchPatientQueue, 120000);
 
     return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
       subscription.unsubscribe();
       clearInterval(intervalId);
     };
-  }, []);
-
-  const fetchPatientQueue = async () => {
-    try {
-      setLoading(true);
-      
-      // Try to use the triage API endpoint first
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/triage/queue`);
-        if (response.ok) {
-          const data = await response.json();
-          setPatients(data);
-          setLastUpdated(new Date());
-          setError(null); // Clear any previous errors
-          return;
-        }
-      } catch (err) {
-        console.error('Error fetching from API, falling back to direct Supabase query:', err);
-      }
-      
-      // // Fallback to direct Supabase query
-      // const { data, error } = await supabase
-      //   .from('patients')
-      //   .select('*')
-      //   .eq('status', 'waiting')
-      //   .order('priority_score', { ascending: false });
-      
-      // if (error) throw error;
-      
-      // setPatients(data || []);
-      // setLastUpdated(new Date());
-    } catch (err) {
-      console.error('Error fetching patient queue:', err);
-      setError('Unable to load patient queue. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchPatientQueue, debouncedUpdate]);
 
   // Calculate waiting time in minutes
   const calculateWaitingTime = (arrivalTime: string): number => {
@@ -125,7 +167,10 @@ const PatientView: FC = () => {
               const waitingTime = calculateWaitingTime(patient.arrival_time);
               
               return (
-                <div key={patient.id} className={`queue-item risk-${patient.risk_level}`}>
+                <div 
+                  key={patient.id} 
+                  className={`queue-item risk-${patient.risk_level}`}
+                >
                   <div className="queue-position">{index + 1}</div>
                   <div className="patient-info">
                     <div className="patient-id">{patient.first_name} {patient.last_name}</div>
@@ -147,9 +192,6 @@ const PatientView: FC = () => {
                 </div>
               );
             })
-          )}
-          {loading && patients.length > 0 && (
-            <div className="loading-overlay">Refreshing...</div>
           )}
         </div>
       </div>

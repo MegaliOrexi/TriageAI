@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 
 interface NavbarProps {
   session: Session | null;
-  currentPage: 'dashboard' | 'patients' | 'staff' | 'resources' | 'settings';
+  currentPage: 'dashboard' | 'patients' | 'staff' | 'resources' | 'settings' | 'model-tester';
 }
 
 const Navbar: FC<NavbarProps> = ({ session, currentPage }) => {
@@ -49,6 +49,12 @@ const Navbar: FC<NavbarProps> = ({ session, currentPage }) => {
           className={`nav-link ${currentPage === 'settings' ? 'active' : ''}`}
         >
           Settings
+        </Link>
+        <Link 
+          to="/model-tester" 
+          className={`nav-link ${currentPage === 'model-tester' ? 'active' : ''}`}
+        >
+          Model Tester
         </Link>
       </div>
       
