@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Patient } from '../lib/supabase';
+import './PatientView.css';
 
 const PatientView: FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -46,7 +47,7 @@ const PatientView: FC = () => {
           const data = await response.json();
           setPatients(data);
           setLastUpdated(new Date());
-          setLoading(false);
+          setError(null); // Clear any previous errors
           return;
         }
       } catch (err) {
@@ -113,10 +114,12 @@ const PatientView: FC = () => {
         </div>
         
         <div className="queue-list">
-          {loading ? (
-            <div className="loading-spinner">Loading patient queue...</div>
-          ) : patients.length === 0 ? (
-            <div className="empty-queue">No patients currently waiting</div>
+          {patients.length === 0 ? (
+            loading ? (
+              <div className="loading-spinner">Loading patient queue...</div>
+            ) : (
+              <div className="empty-queue">No patients currently waiting</div>
+            )
           ) : (
             patients.map((patient, index) => {
               const waitingTime = calculateWaitingTime(patient.arrival_time);
@@ -144,6 +147,9 @@ const PatientView: FC = () => {
                 </div>
               );
             })
+          )}
+          {loading && patients.length > 0 && (
+            <div className="loading-overlay">Refreshing...</div>
           )}
         </div>
       </div>
