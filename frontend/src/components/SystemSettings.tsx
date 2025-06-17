@@ -99,25 +99,67 @@ const SystemSettings: FC = () => {
       setError(null);
       setSuccessMessage(null);
       
-      // Save priority calculation settings
-      const { error: priorityError } = await supabase
+      // First check if settings exist
+      const { data: existingPrioritySettings } = await supabase
         .from('system_settings')
-        .upsert({
-          key: 'priority_calculation',
-          value: settings.priority_calculation,
-          description: 'Weights and parameters for the priority calculation algorithm'
-        });
+        .select('*')
+        .eq('key', 'priority_calculation')
+        .single();
+      
+      // Save priority calculation settings
+      const priorityData = {
+        key: 'priority_calculation',
+        value: settings.priority_calculation,
+        description: 'Weights and parameters for the priority calculation algorithm'
+      };
+      
+      let priorityError;
+      if (existingPrioritySettings) {
+        // Update existing record
+        const { error } = await supabase
+          .from('system_settings')
+          .update(priorityData)
+          .eq('key', 'priority_calculation');
+        priorityError = error;
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('system_settings')
+          .insert(priorityData);
+        priorityError = error;
+      }
       
       if (priorityError) throw priorityError;
       
-      // Save display settings
-      const { error: displayError } = await supabase
+      // Check if display settings exist
+      const { data: existingDisplaySettings } = await supabase
         .from('system_settings')
-        .upsert({
-          key: 'display_settings',
-          value: settings.display_settings,
-          description: 'Settings for the user interface displays'
-        });
+        .select('*')
+        .eq('key', 'display_settings')
+        .single();
+      
+      // Save display settings
+      const displayData = {
+        key: 'display_settings',
+        value: settings.display_settings,
+        description: 'Settings for the user interface displays'
+      };
+      
+      let displayError;
+      if (existingDisplaySettings) {
+        // Update existing record
+        const { error } = await supabase
+          .from('system_settings')
+          .update(displayData)
+          .eq('key', 'display_settings');
+        displayError = error;
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('system_settings')
+          .insert(displayData);
+        displayError = error;
+      }
       
       if (displayError) throw displayError;
       

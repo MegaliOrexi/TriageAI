@@ -13,6 +13,7 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
     first_name: '',
     last_name: '',
     date_of_birth: '',
+    age: '',
     gender: '',
     systolic_bp: '',
     diastolic_bp: '',
@@ -25,7 +26,7 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
     diabetes: false,
     hypertension: false,
     copd: false,
-    AVPU: 'Alert',
+    avpu: 'Alert',
     chief_complaint: 'Other',
     symptom_duration: '2-6h'
   });
@@ -35,6 +36,7 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
     'Chest Pain',
     'Dyspnea',
     'Neurological',
+    'Shortness of Breath',
     'Other',
     'Trauma'
   ];
@@ -61,6 +63,7 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
       first_name: formData.first_name,
       last_name: formData.last_name,
       date_of_birth: formData.date_of_birth,
+      Age: Number(formData.age),
       gender: formData.gender,
       Systolic_BP: Number(formData.systolic_bp),
       Diastolic_BP: Number(formData.diastolic_bp),
@@ -73,7 +76,7 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
       Diabetes: formData.diabetes ? 1 : 0,
       Hypertension: formData.hypertension ? 1 : 0,
       COPD: formData.copd ? 1 : 0,
-      AVPU: formData.AVPU,
+      AVPU: formData.avpu,
       Chief_Complaint: formData.chief_complaint,
       Symptom_Duration: formData.symptom_duration
     };
@@ -120,6 +123,17 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
                 id="date_of_birth"
                 name="date_of_birth"
                 value={formData.date_of_birth}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="age">Age*</label>
+              <input
+                type="number"
+                id="age"
+                name="age"
+                value={formData.age}
                 onChange={handleInputChange}
                 required
               />
@@ -289,7 +303,7 @@ const AddPatientForm: FC<AddPatientFormProps> = ({ onSubmit, onCancel, isSubmitt
               <select
                 id="AVPU"
                 name="AVPU"
-                value={formData.AVPU}
+                value={formData.avpu}
                 onChange={handleInputChange}
                 required
               >

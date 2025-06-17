@@ -29,8 +29,15 @@ def supabase_request(method, path, data=None, params=None):
         response = requests.get(url, headers=headers, params=params)
     elif method == 'POST':
         response = requests.post(url, headers=headers, json=data)
-    elif method == 'PUT':
-        response = requests.put(url, headers=headers, json=data)
+    elif method == 'PUT' or method == 'PATCH':
+        # For updates, always use PATCH with the filter in the URL
+        if params and 'id' in params:
+            # Ensure the URL has the proper WHERE clause format
+            resource_id = params['id'].split('eq.')[1]  # Extract the ID value
+            update_url = f"{url}?id=eq.{resource_id}"
+            response = requests.patch(update_url, headers=headers, json=data)
+        else:
+            raise ValueError("Update operations require an 'id' filter")
     elif method == 'DELETE':
         response = requests.delete(url, headers=headers, params=params)
     else:
